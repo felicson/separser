@@ -3,7 +3,6 @@ package separser
 import (
 	"errors"
 	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -12,22 +11,65 @@ var (
 	ErrWrongHost = errors.New("Wrong Host")
 )
 
-var SE = map[string][]string{
+type se int
 
-	"Yandex":     {"1", "text"},
-	"Google":     {"2", "q"},
-	"Mail":       {"3", "q"},
-	"Bing":       {"4", "q"},
-	"Rambler":    {"5", "query"},
-	"Myprom":     {"6", "query"},
-	"Techserver": {"7", "query"},
-	"Webalta":    {"8", "q"},
-	"Nigma":      {"9", "s"},
+type seP struct {
+	se    se
+	param string
+}
+
+const (
+	Yandex se = iota + 1
+	Google
+	Mail
+	Bing
+	Rambler
+	Myprom
+	Techserver
+	Webalta
+	Nigma
+)
+
+var seMap = map[string]seP{
+
+	"Yandex":     seP{Yandex, "text"},
+	"Google":     seP{Google, "q"},
+	"Mail":       seP{Mail, "q"},
+	"Bing":       seP{Bing, "q"},
+	"Rambler":    seP{Rambler, "query"},
+	"Myprom":     seP{Myprom, "query"},
+	"Techserver": seP{Techserver, "query"},
+	"Webalta":    seP{Webalta, "q"},
+	"Nigma":      seP{Nigma, "s"},
+}
+
+func (s se) String() string {
+	switch s {
+	case Yandex:
+		return "Yandex"
+	case Google:
+		return "Google"
+	case Mail:
+		return "Mail"
+	case Bing:
+		return "Bing"
+	case Rambler:
+		return "Rambler"
+	case Myprom:
+		return "Myprom"
+	case Techserver:
+		return "Techserver"
+	case Webalta:
+		return "Webalta"
+	case Nigma:
+		return "Nigma"
+	}
+	return ""
 }
 
 type SeQuery struct {
-	Query string
-	SeId  int
+	Query    string
+	EngineId se
 }
 
 func NewSeQuery(rawQuery string) (*SeQuery, error) {
@@ -41,34 +83,29 @@ func NewSeQuery(rawQuery string) (*SeQuery, error) {
 		return nil, err
 	}
 	vals := u.Query()
-	ptr, ok := SE[host]
+	val, ok := seMap[host]
 	if !ok {
 		return nil, ErrUnknownSe
 	}
 
-	id, err := strconv.Atoi(ptr[0])
-
 	if err != nil {
 		return nil, err
 	}
-	return &SeQuery{Query: vals.Get(ptr[1]), SeId: id}, nil
+	return &SeQuery{Query: vals.Get(val.param), EngineId: val.se}, nil
 
 }
 
 func (sq *SeQuery) Exist() bool {
 
-	if sq.Query != "" && sq.SeId > 0 {
+	if sq.Query != "" && sq.EngineId > 0 {
 		return true
 	}
 	return false
 }
 
 func (sq *SeQuery) SeName() (string, error) {
-	i := strconv.Itoa(sq.SeId)
-	for k, v := range SE {
-		if v[0] == i {
-			return k, nil
-		}
+	if name := sq.EngineId.String(); name != "" {
+		return name, nil
 	}
 	return "", ErrUnknownSe
 }
